@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.hybn.module.system.dao.UserDao">
+	<select id="findByPage" parameterType="com.hybn.entity.system.User" resultType="com.hybn.entity.system.User">
+		SELECT u.*,d.name AS deptName FROM sys_user u
+		LEFT JOIN sys_dept d ON u.dept_id=d.id
+		<where>
+			<if test="id!=null">
+				u.id=#{id}
+			</if>
+			<if test="status!=null">
+				AND u.`status`= #{status}
+			</if>
+			<if test="username!=null and username!=''">
+				AND u.username LIKE '%${username}%' <!--CONCAT('%',#{username},'%')-->
+			</if>
+			<if test="name!=null and name!=''">
+				AND u.name LIKE CONCAT('%',#{name},'%') <!--CONCAT('%',#{username},'%')-->
+			</if>
+			<if test="userTypeIds!=null and userTypeIds != ''">
+				AND u.user_type in
+				<foreach collection="userTypeIds" index="index" item="item" open="(" separator="," close=")">
+				#{item}
+				</foreach>
+			</if>
+			<if test="userType!=null and userType != ''">
+				AND u.user_type = #{userType}
+			</if>
+			<if test="deptId!=null">
+				AND u.dept_id=#{deptId}
+			</if>
+			<if test="deptIds!=null and deptIds.size()>0">
+				AND u.dept_id in
+				<foreach collection="deptIds" index="index" item="item" open="(" separator="," close=")">
+					#{item}
+				</foreach>
+			</if>
+		</where>
+	</select>
+
+	<select id="getUserListById" resultType="com.hybn.entity.system.User">
+		select id,username,name from sys_user
+		where id in
+		<foreach collection="array" item="item" open="(" separator="," close=")">
+			#{item}
+		</foreach>
+	</select>
+
+	<select id="getCount" resultType="Integer">
+		select count(id) from sys_user
+		where user_type = 2
+	</select>
+
+	<select id="findUserPage" parameterType="com.hybn.entity.system.User" resultType="com.hybn.entity.system.User">
+		SELECT u.*,d.name AS deptName,r.role_id,ro.`name` as role ,ui.introduction as introduction,
+		ui.edu as edu,ui.qualification as qualification,ui.expert_in as expertIn,ui.interests as interests ,si.icon as icon
+		FROM sys_user u
+		LEFT JOIN sys_dept d ON u.dept_id=d.id
+		LEFT JOIN sys_user_role r on u.id=r.user_id
+		LEFT JOIN sys_role ro on r.role_id=ro.id
+        LEFT JOIN xsw_user_satellite_info ui on ui.user_id = u.id
+		LEFT JOIN sys_user_icon si on si.user_id = u.id
+		<where>
+			u.user_type = 2
+			and u.status = 1
+			<if test="id!=null">
+				and u.id=#{id}
+			</if>
+			<if test="status!=null">
+				AND u.`status`= #{status}
+			</if>
+			<if test="username!= null and username!=''">
+				AND u.username LIKE '%${username}%' <!--CONCAT('%',#{username},'%')-->
+			</if>
+			<if test="name != '' and name != null">
+				AND u.name like CONCAT('%',#{name},'%') <!--CONCAT('%',#{username},'%')-->
+			</if>
+			<if test="deptId!=null">
+				AND u.dept_id=#{deptId}
+			</if>
+		</where>
+	</select>
+
+	<select id="getCountByDept" parameterType="com.hybn.entity.system.User" resultType="Integer">
+		SELECT count(1) FROM sys_user
+		<where>
+			status=1
+			<if test="deptId!=null">
+				and dept_id=#{deptId}
+			</if>
+		</where>
+	</select>
+
+	<!--  下面的这个是 todayCustom借口   user mapper里  今日这个业务员 新增的所有客户  和下单的客户重复了，12 10修改  -->
+	<select id="todayAllCustom" resultType="com.hybn.entity.system.User">
+
+select a.name,a.username,a.icon_id,c.address,a.id as userId,max(b.addtime) as addtime,b.order_type,c.phone as tel,c.person as roleName
+			from sys_user a left join goods_order b on a.id = b.user_id left join good_user_addr c on b.addr_id = c.id
+			where a.cid = #{cid} AND TO_DAYS(a.addtime) = TO_DAYS(NOW()) group by a.id
+
+
+	</select>
+
+    <select id="selectFromCid" resultType="com.hybn.entity.system.User" parameterType="java.lang.Integer">
+
+        select id,name,username from sys_user where cid = #{cid}
+
+    </select>
+
+	<!--  下面的这个是  todayCustom接口  所有  这个业务员的    所有的客户
+
+	SELECT a.user_id as userId,max(a.addtime) as addtime,
+			b.username,b.icon_id,b.address
+			from goods_order a left join sys_user b on a.user_id = b.id
+			where b.cid = #{cid} AND a.order_type = 1 group by a.user_id
+	现在改成下面这样，会有很多空值，但却将所有的 user表里的取出来了
+	-->
+	<select id="belonesThis" resultType="com.hybn.entity.system.User">
+			select a.name,a.username,a.icon_id,c.address,a.id as userId,max(b.addtime) as addtime,b.order_type,c.phone as tel,c.person as roleName
+			from sys_user a left join goods_order b on a.id = b.user_id left join good_user_addr c on b.addr_id = c.id
+			where a.cid = #{cid}  group by a.id
+	</select>
+
+	<!--  下面的这个是 是不是有东西，因为，unpayday没有取出，什么情况下是 unpay  的
+
+	  造假数据，如何取   任何是 未支付  状态下的  订单，不对，这个不需要什么未支付，只要其客户  有任何下单的记录就够了
+	  -->
+	<select id="sortByUnpayDay" resultType="com.hybn.entity.system.User">
+select a.id,a.user_id,max(a.addtime),(SELECT TIMESTAMPDIFF(DAY,max(a.addtime),now())) AS today,
+  ((SELECT TIMESTAMPDIFF(DAY,max(a.addtime),now())) - b.cycle) as cityId,b.cycle,b.icon_id,c.person as username,c.address,b.tel
+
+from goods_order a
+left join sys_user b on a.user_id=b.id left join good_user_addr c on a.addr_id=c.id
+where b.cid=#{userId}
+
+
+group by a.user_id
+
+order by (b.cycle - (SELECT TIMESTAMPDIFF(DAY,max(a.addtime),now()))) asc
+	</select>
+
+	<select id="getUserByRole" resultType="com.hybn.entity.system.User">
+		SELECT u.id FROM sys_user u
+		LEFT JOIN sys_user_role r on u.id=r.user_id
+		LEFT JOIN sys_role ro on r.role_id=ro.id
+		where ro.id=8
+	</select>
+
+    <!--查询用户-->
+	<select id="findByTel" parameterType="java.lang.String" resultType="com.hybn.entity.system.User">
+		select id from sys_user where tel=#{tel}
+	</select>
+
+</mapper>
