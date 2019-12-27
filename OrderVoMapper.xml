@@ -1,0 +1,384 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.hybn.module.order.dao.OrderVoDao">
+
+	<select id="findByPage" resultType="com.hybn.entity.order.OrderVo">
+		select `id`,`goods_order_info_id`,`goods_return_order_info_id`,`order_state`,`pay_type`,`discount_type`,`goods_coupon_id`,`coupon_amount`,`user_id`,`addr_id`,`delivery_id`,`displace`,`img`,`total`,goods_cart_id,`adduser`,`addtime`,`order_type`,`order_num`,`discount_total` from goods_order
+		<where>
+			<if test="id != null and id != ''">
+				and id = #{id}
+			</if>
+			<!--  下面的这个是   全部订单   -->
+			<if test="allNum == 3">
+				and order_state != 3
+			</if>
+
+			<if test="allNum == 4">
+				and (order_state = 1 OR order_state = 2)
+			</if>
+
+			<if test="allNum == 5">
+				and order_state = 4
+			</if>
+
+			<if test="allNum == 6">
+				and order_state = 5
+			</if>
+
+			<if test="allNum == 7">
+				and order_state = 6
+			</if>
+
+
+			<if test="orderType != null and orderType != ''">
+				and order_type = #{orderType}
+			</if>
+
+			<if test="goodsOrderInfoId != null and goodsOrderInfoId != ''">
+				and goods_order_info_id = #{goodsOrderInfoId}
+			</if>
+
+			<if test="payType != null and payType != ''">
+				and pay_type = #{payType}
+			</if>
+			<if test="discountType != null and discountType != ''">
+				and discount_type = #{discountType}
+			</if>
+			<if test="goodsCouponId != null and goodsCouponId != ''">
+				and goods_coupon_id = #{goodsCouponId}
+			</if>
+			<if test="couponAmount != null and couponAmount != ''">
+				and coupon_amount = #{couponAmount}
+			</if>
+			<if test="userId != null and userId != ''">
+				and user_id = #{userId}
+			</if>
+			<if test="addrId != null and addrId != ''">
+				and addr_id = #{addrId}
+			</if>
+			<if test="deliveryId != null and deliveryId != ''">
+				and delivery_id = #{deliveryId}
+			</if>
+			<if test="img != null and img != ''">
+				and img = #{img}
+			</if>
+			<if test="total != null and total != ''">
+				and total = #{total}
+			</if>
+			<if test="goodsCartId != null and goodsCartId != ''">
+				and goods_cart_id = #{goodsCartId}
+			</if>
+			<if test="comment != null and comment != ''">
+				and comment = #{comment}
+			</if>
+			<if test="adduser != null and adduser != ''">
+				and adduser = #{adduser}
+			</if>
+			<if test="addtime != null and addtime != ''">
+				and addtime = #{addtime}
+			</if>
+
+		</where>
+		order by id desc
+	</select>
+
+
+	<select id="findALLOrderByUserId" resultType="com.hybn.entity.order.OrderVo" parameterType="java.lang.Integer">
+	select a.id, a.goods_order_info_id, a.order_state, a.user_id, a.total,a.addtime
+	from goods_order a
+	where a.user_id=#{uid} and a.order_state != 3 order by id desc
+	</select>
+
+	<select id="getOrderByReturnStatusAndUserId" resultType="com.hybn.entity.order.OrderVo" parameterType="java.lang.Integer">
+			select a.id,a.order_num,a.goods_order_info_id,a.order_type,a.order_state, a.user_id, a.total,a.addtime,a.parent_goods_order_id
+	from goods_order a
+	where a.user_id=#{orderId} and (a.order_type = 2 OR a.order_type = 3) and a.order_state != 3 order by id desc
+	</select>
+
+	<!--  下面的这个是 查看各种状态时间的订单   apiOrder里的 allOrder   -->
+	<select id="selectByIdSet" resultType="com.hybn.entity.order.OrderVo" parameterType="List">
+		SELECT
+		a.id,a.order_num,a.goods_order_info_id, a.order_type,a.order_state, a.user_id, a.total,a.addtime,a.checks
+		from goods_order a
+		WHERE a.id IN
+		<foreach collection="list" item="id" index="index" open="(" close=")" separator=",">
+			#{id}
+		</foreach>
+	</select>
+
+	<!--  下面的这个是 后台的  查看各种退货条件的搜索 -->
+	<select id="selectByIdSetInback" resultType="com.hybn.entity.order.OrderVo">
+		SELECT
+		a.id,a.order_num,a.goods_order_info_id, a.order_type,a.order_state, a.user_id, a.total,a.addtime,a.checks,a.addr_id,a.delivery_id
+		from goods_order a
+		WHERE a.id IN
+		<foreach collection="orderList" item="id" index="index" open="(" close=")" separator=",">
+			#{id}
+		</foreach>
+
+		<if test="orderModel.orderType != null and orderModel.orderType != ''">
+			AND order_type = #{orderModel.orderType}
+		</if>
+		<!--  sprice   是订单搜索   输入框   的起始价格 -->
+		<if test="orderModel.sprice != null and orderModel.sprice != ''">
+			AND a.total >= #{orderModel.sprice}
+		</if>
+		<!--  eprice  是订单搜索  输入框  的最终价格 -->
+		<if test="orderModel.eprice != null and orderModel.eprice != ''">
+		    	<![CDATA[ and a.total <= #{orderModel.eprice}]]>
+		</if>
+
+		<if test="orderModel.sprice != null and orderModel.sprice != '' and orderModel.eprice != null and orderModel.eprice != ''">
+			and a.total between #{orderModel.sprice} and #{orderModel.eprice}
+		</if>
+		order by a.id desc
+
+	</select>
+	<select id="allTodayOrder" resultType="com.hybn.entity.order.OrderVo">
+SELECT * FROM goods_order WHERE TO_DAYS(addtime) = TO_DAYS(NOW())
+	</select>
+	<!--  下面的这个是   业务员底下，所有 的订单  -->
+    <select id="selectByUserIdSet" resultType="com.hybn.entity.order.OrderVo" parameterType="List">
+        SELECT
+        a.id,a.order_num,a.displace,a.goods_order_info_id,a.goods_coupon_id, a.order_type,a.order_state, a.user_id, a.total,a.addtime,b.name as orderUserName,c.name as comment,a.arrivetime,b.shopname
+        from goods_order a
+        left join sys_user b
+
+        on a.user_id = b.id
+        left join sys_user c on a.displace=c.id
+        WHERE a.user_id IN
+        <foreach collection="list" item="id" index="index" open="(" close=")" separator=",">
+            #{id}
+        </foreach> and order_type = 1 and a.order_state != 3 order by a.addtime desc
+    </select>
+
+	<!--  下面的这个是   业务员底下，所有 的  其客户提交的  退货 申请的 订单  -->
+	<select id="selectByUserIdReturn" resultType="com.hybn.entity.order.OrderVo" parameterType="List">
+		SELECT
+		a.id,a.order_num,a.displace,a.goods_order_info_id,a.goods_coupon_id,a.checks, a.order_type, a.user_id, a.total,a.addtime,b.name as orderUserName,c.name as comment
+		from goods_order a
+		left join sys_user b
+
+		on a.user_id = b.id
+		left join sys_user c on a.displace=c.id
+		WHERE a.user_id IN
+		<foreach collection="list" item="id" index="index" open="(" close=")" separator=",">
+			#{id}
+		</foreach> and order_type = 2 and a.checks=1 order by a.addtime desc
+	</select>
+	<!--  下面的这个是   业务员底下，所有的已完成的订单  -->
+
+	<select id="selectByUserIdFinish" resultType="com.hybn.entity.order.OrderVo" parameterType="List">
+		SELECT
+		a.id,a.order_num,a.cost,a.displace,a.goods_order_info_id,a.goods_coupon_id, a.order_type,a.order_state, a.user_id, a.total,a.addtime,b.name as orderUserName
+		from goods_order a
+		left join sys_user b
+
+		on a.user_id = b.id
+		WHERE a.user_id IN
+		<foreach collection="list" item="id" index="index" open="(" close=")" separator=",">
+			#{id}
+		</foreach> and order_state = 4  and order_type = 1 order by a.addtime desc
+	</select>
+
+
+
+    <select id="selectByUserIdSetToday" resultType="com.hybn.entity.order.OrderVo" parameterType="List">
+        SELECT
+        a.id,a.order_num,a.displace,a.goods_order_info_id,a.goods_coupon_id, a.order_type,a.order_state, a.user_id, a.total,a.addtime,b.shopname,b.name as orderUserName,c.name as comment,a.arrivetime
+        from goods_order a
+        left join sys_user b
+
+        on a.user_id = b.id
+        left join sys_user c on a.displace=c.id
+        WHERE a.user_id IN
+        <foreach collection="list" item="id" index="index" open="(" close=")" separator=",">
+            #{id}
+        </foreach> and TO_DAYS(a.addtime) = TO_DAYS(NOW())  and order_type = 1 and a.order_state != 3 order by a.addtime desc
+    </select>
+
+    <select id="selectByUserIdSetYesterday" resultType="com.hybn.entity.order.OrderVo" parameterType="List">
+        SELECT
+        a.id,a.order_num,a.displace,a.goods_order_info_id,a.goods_coupon_id, a.order_type,a.order_state, a.user_id, a.total,a.addtime,b.shopname,b.name as orderUserName,c.name as comment,a.arrivetime
+        from goods_order a
+        left join sys_user b
+
+        on a.user_id = b.id
+        left join sys_user c on a.displace=c.id
+        WHERE a.user_id IN
+        <foreach collection="list" item="id" index="index" open="(" close=")" separator=",">
+            #{id}
+        </foreach> and TO_DAYS(NOW()) - TO_DAYS(a.addtime) = 1 and a.order_state != 3  and order_type = 1  order by a.addtime desc
+    </select>
+
+    <select id="selectByUserIdSetWeek" resultType="com.hybn.entity.order.OrderVo" parameterType="List">
+        SELECT
+        a.id,a.order_num,a.displace,a.goods_order_info_id,a.goods_coupon_id, a.order_type,a.order_state, a.user_id, a.total,a.addtime,b.shopname,b.name as orderUserName,c.name as comment,a.arrivetime
+        from goods_order a
+        left join sys_user b
+
+        on a.user_id = b.id
+        left join sys_user c on a.displace=c.id
+        WHERE a.user_id IN
+        <foreach collection="list" item="id" index="index" open="(" close=")" separator=",">
+            #{id}
+        </foreach>  <![CDATA[ and DATE_SUB(CURDATE(), INTERVAL 7 DAY) <= date(a.addtime)]]> and a.order_state != 3 AND  order_type = 1  order by a.addtime desc
+
+    </select>
+
+
+	<!--  下面的这个是   todayCustom接口   1:某业务员 今日下单的客户  那么就只要主订单状态为1，别的什么  刚下单 已收货什么的都无需管  -->
+	<select id="allCashCustomToday" resultType="com.hybn.entity.system.User">
+
+			SELECT a.user_id as userId,max(a.addtime) as addtime,
+			c.person as username,b.icon_id,c.address,c.phone as tel,c.province_id,c.city_id,c.country_id,c.person as roleName
+			from goods_order a left join sys_user b on a.user_id = b.id left join good_user_addr c on a.addr_id=c.id
+			where
+			    TO_DAYS(a.addtime) = TO_DAYS(NOW())
+			  AND a.order_state != 3 AND  b.cid = #{cid} AND a.order_type = 1 group by a.user_id
+
+	</select>
+
+
+    <select id="unPay" resultType="com.hybn.entity.order.OrderVo">
+        SELECT
+        a.id,a.order_num,a.goods_order_info_id, a.order_type,(case a.order_state when '1' then '待收货' when '2' then
+        '待收货' when '3' then '待支付' when '4' then '已完成' when '5' then '已收货待结算' when '6' then '待审核' end) as orderZt,
+        a.user_id, a.total,a.addtime,b.username as orderUserName,b.tel as orderTel
+        from goods_order a
+        left join sys_user b
+        on a.user_id = b.id
+        WHERE a.user_id IN
+        <foreach collection="list" item="id" index="index" open="(" close=")" separator=",">
+            #{id}
+        </foreach>
+        and (a.order_state = 1 OR a.order_state = 3 OR a.order_state = 5 OR a.order_state = 6)
+
+        <if test="time != null">
+            ORDER BY a.addtime ${time}
+        </if>
+        <if test="sort != null">
+            ORDER BY a.total ${sort}
+        </if>
+		<if test="sort == null and time == null">
+			ORDER BY a.addtime desc
+		</if>
+    </select>
+
+	<!--  下面的这个是   仓库管理员的所有他所属仓库的  所有订单  -->
+	<select id="findALLOrderByAddrId" resultType="com.hybn.entity.order.OrderVo">
+		select a.id,a.order_num,a.addr_id,a.addtime,a.goods_order_info_id,b.person,b.address,a.total,a.delivery_id,a.cstatus,a.order_type,a.user_id,a.arrivetime
+		from goods_order a
+		left join good_user_addr b on a.addr_id=b.id
+		where a.order_type=1 AND a.order_state !=3 AND a.addr_id in (select id from good_user_addr where sid = #{param1})
+		<if test="param2 == 1">
+			AND TO_DAYS(a.addtime) = TO_DAYS(NOW())
+		</if>
+		<if test="param2 == 2">
+			AND TO_DAYS(NOW()) - TO_DAYS(a.addtime) = 1
+		</if>
+		<if test="param2 == 3">
+
+			<![CDATA[ AND DATE_SUB(CURDATE(), INTERVAL 7 DAY) <= date(a.addtime)]]>
+
+
+		</if>
+		<if test="param3 == 1">
+			AND a.cstatus=1
+		</if>
+		<if test="param3 == 2">
+			AND a.cstatus=2
+		</if>
+
+		order by a.id desc;
+
+	</select>
+
+
+	<!--  下面的这个是  派单员的所有他所属仓库的  属于他的订单  -->
+	<select id="findALLOrderByRobId" resultType="com.hybn.entity.order.OrderVo">
+		select a.id,a.order_num,a.addr_id,a.addtime,a.goods_order_info_id,b.person,b.address,a.total,a.delivery_id,a.cstatus,a.arrivetime,a.user_id
+		from goods_order a
+		left join good_user_addr b on a.addr_id=b.id
+		where a.order_state != 3 AND  a.addr_id in (select id from good_user_addr where sid = #{param1})
+		<if test="param2 == 1">
+			AND TO_DAYS(a.addtime) = TO_DAYS(NOW())
+		</if>
+		<if test="param2 == 2">
+			AND TO_DAYS(NOW()) - TO_DAYS(a.addtime) = 1
+		</if>
+		<if test="param2 == 3">
+
+			<![CDATA[ AND DATE_SUB(CURDATE(), INTERVAL 7 DAY) <= date(a.addtime)]]>
+
+		</if>
+		<if test="param3 == 1">
+			AND a.cstatus=1
+		</if>
+		<if test="param3 == 2">
+			AND a.cstatus=2
+		</if>
+
+		order by a.id desc;
+
+	</select>
+
+
+
+
+	<!--  下面的这个是   仓库管理员的所有他所属仓库的  今天1，昨天2，一周内3的所有订单  -->
+	<select id="findALLOrderByAddrIdByDay" resultType="com.hybn.entity.order.OrderVo">
+		select a.id,a.order_num,a.addr_id,a.addtime,a.goods_order_info_id,b.person,b.address,a.total,a.delivery_id,a.user_id,a.img,a.arrivetime
+		from goods_order a
+		left join good_user_addr b on a.addr_id=b.id
+		where a.order_state != 3 AND a.addr_id in (select id from good_user_addr where sid = #{cid}) order by a.id desc;
+	</select>
+
+
+
+
+	<select id="findALLOrderByAddrIdAndDelivery" resultType="com.hybn.entity.order.OrderVo">
+
+select a.id,a.order_num,a.addr_id,a.addtime,a.goods_order_info_id,b.person,b.address,a.total,a.delivery_id,a.arrivetime,a.img,a.user_id
+from goods_order a
+left join good_user_addr b on a.addr_id=b.id
+where a.order_type=1 AND a.order_state != 3 AND a.addr_id in (select id from good_user_addr where sid = #{cid}) and a.delivery_id is null order by a.id desc;
+
+
+	</select>
+
+
+	<select id="findAlreadyHave" resultType="com.hybn.entity.order.OrderVo">
+
+select a.id,a.order_num,a.addr_id,a.addtime,a.goods_order_info_id,b.person,b.address,a.total,a.delivery_id,a.arrivetime,a.user_id
+from goods_order a
+left join good_user_addr b on a.addr_id=b.id
+where a.delivery_id = #{param1}
+<if test="param2 == 1">
+	AND a.img is null
+</if>
+		<if test="param2 == 2">
+			AND a.img is not null
+		</if>
+
+		<if test="param3 == 1">
+			AND TO_DAYS(a.addtime) = TO_DAYS(NOW())
+		</if>
+		<if test="param3 == 2">
+			AND TO_DAYS(NOW()) - TO_DAYS(a.addtime) = 1
+		</if>
+		<if test="param3 == 3">
+			<![CDATA[ AND DATE_SUB(CURDATE(), INTERVAL 7 DAY) <= date(a.addtime)]]>
+		</if>
+
+		order by a.id desc
+
+	</select>
+
+	<select id="getShare" resultType="java.lang.Double" parameterType="java.lang.Integer">
+		select share from goods_share where end >= #{price} <![CDATA[ and begin <= #{price}]]>
+
+	</select>
+
+</mapper>
